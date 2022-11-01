@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "dfs/data-node",
+    "dfs/main-server",
+
+    "session-server",
+    "enterprise"
+]
