@@ -1,6 +1,6 @@
-mod block_storage;
+extern crate core;
 
-use crate::block_storage::BlockStorage;
+mod block_storage;
 
 use axum::routing::get;
 use axum::Router;
@@ -8,7 +8,7 @@ use clap::Parser;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[derive(Parser, Debug)]
-struct Args {
+struct Config {
     /// Port
     #[arg(short, long, default_value_t = 40000)]
     port: u16,
@@ -20,13 +20,13 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    let args: Args = Args::parse();
+    let config: Config = Config::parse();
 
     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 
     axum::Server::bind(&SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        args.port,
+        config.port,
     ))
     .serve(app.into_make_service())
     .await
