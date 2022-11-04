@@ -1,14 +1,18 @@
-extern crate core;
-
 mod block_storage;
 
 use axum::routing::get;
 use axum::Router;
 use clap::Parser;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
+
+use crate::block_storage::BlockStorage;
 
 #[derive(Parser, Debug)]
 struct Config {
+    // Address of main server
+    #[arg(short, long)]
+    main_server_address: String,
+
     /// Port
     #[arg(short, long, default_value_t = 40000)]
     port: u16,
@@ -21,14 +25,21 @@ struct Config {
 #[tokio::main]
 async fn main() {
     let config: Config = Config::parse();
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
 
     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 
-    axum::Server::bind(&SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        config.port,
-    ))
-    .serve(app.into_make_service())
-    .await
-    .unwrap()
+    let block_storage = BlockStorage::new(config.port).await;
+
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal(block_storage))
+        .await
+        .unwrap()
+}
+
+async fn shutdown_signal(block_storage: BlockStorage) {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to install Ctrl+C handler");
 }

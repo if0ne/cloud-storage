@@ -9,6 +9,6 @@ edition = "2021"
 axum.workspace = true
 futures.workspace = true
 clap= { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["fs", "io-util"] }
+tokio = { workspace = true, features = ["fs", "io-util", "signal"] }
 
 rand = { version = "0.8.5" }
