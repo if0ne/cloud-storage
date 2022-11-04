@@ -1,3 +1,7 @@
+mod block_storage;
+
+use crate::block_storage::BlockStorage;
+
 use axum::routing::get;
 use axum::Router;
 use clap::Parser;
