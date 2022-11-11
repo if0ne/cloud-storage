@@ -1,11 +1,12 @@
 mod block_storage;
+mod block_storage_service;
 
-use axum::routing::get;
-use axum::Router;
 use clap::Parser;
 use std::net::SocketAddr;
+use tonic::transport::Server;
 
 use crate::block_storage::BlockStorage;
+use crate::block_storage_service::BlockStorageServiceImpl;
 
 #[derive(Parser, Debug)]
 struct Config {
@@ -23,23 +24,15 @@ struct Config {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = Config::parse();
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
 
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    Server::builder()
+        .accept_http1(true)
+        .add_service(BlockStorageServiceImpl::get_service())
+        .serve(addr)
+        .await?;
 
-    let block_storage = BlockStorage::new(config.port).await;
-
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .with_graceful_shutdown(shutdown_signal(block_storage))
-        .await
-        .unwrap()
-}
-
-async fn shutdown_signal(block_storage: BlockStorage) {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install Ctrl+C handler");
+    Ok(())
 }

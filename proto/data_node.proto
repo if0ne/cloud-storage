@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package data_node;
+
+service BlockStorageService {
+  rpc create_block(CreateBlockRequest) returns (CreateBlockResponse) {}
+  rpc read_block(ReadBlockRequest) returns (ReadBlockResponse) {}
+  rpc update_block(UpdateBlockRequest) returns (UpdateBlockResponse) {}
+  rpc delete_block(DeleteBlockRequest) returns (DeleteBlockResponse) {}
+}
+
+message CreateBlockRequest {
+  uint64 block_id = 1;
+  bytes data = 2;
+}
+
+message CreateBlockResponse {
+}
+
+message ReadBlockRequest {
+  uint64 block_id = 1;
+}
+
+message ReadBlockResponse {
+  bytes data = 1;
+}
+
+message UpdateBlockRequest {
+  uint64 block_id = 1;
+  bytes data = 2;
+}
+
+message UpdateBlockResponse {
+}
+
+message DeleteBlockRequest {
+  uint64 block_id = 1;
+}
+
+message DeleteBlockResponse {
+}
