@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .accept_http1(true)
-        .add_service(BlockStorageServiceImpl::get_service())
+        .add_service(BlockStorageServiceImpl::get_service(config.port).await)
         .serve(addr)
         .await?;
 
