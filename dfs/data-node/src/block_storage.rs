@@ -3,6 +3,7 @@ use std::path::Path;
 
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufReader, BufWriter};
+use uuid::Uuid;
 
 pub type StorageTag = u16;
 
@@ -23,22 +24,25 @@ impl BlockStorage {
         Self { tag }
     }
 
-    pub async fn create_block(&self, block_id: u64, data: &[u8]) {
+    pub async fn create_block(&self, data: &[u8]) -> Uuid {
+        let uuid = Uuid::new_v4();
         let file = OpenOptions::new()
             .write(true)
             .read(false)
             .create(true)
-            .open(format!("{}/{}", self.tag, block_id))
+            .open(format!("{}/{}", self.tag, uuid.as_u128()))
             .await
             .unwrap();
         self.write_block(file, data).await;
+
+        uuid
     }
 
-    pub async fn read_block(&self, block_id: u64) -> Vec<u8> {
+    pub async fn read_block(&self, block_id: Uuid) -> Vec<u8> {
         let file = OpenOptions::new()
             .write(false)
             .read(true)
-            .open(format!("{}/{}", self.tag, block_id))
+            .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
             .unwrap();
         let buffer_len = file.metadata().await.unwrap().len() as usize;
@@ -49,18 +53,18 @@ impl BlockStorage {
         buffer
     }
 
-    pub async fn update_block(&self, block_id: u64, data: &[u8]) {
+    pub async fn update_block(&self, block_id: Uuid, data: &[u8]) {
         let file = OpenOptions::new()
             .write(true)
             .read(false)
-            .open(format!("{}/{}", self.tag, block_id))
+            .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
             .unwrap();
         self.write_block(file, data).await;
     }
 
-    pub async fn delete_block(&self, block_id: u64) {
-        tokio::fs::remove_file(format!("{}/{}", self.tag, block_id))
+    pub async fn delete_block(&self, block_id: Uuid) {
+        tokio::fs::remove_file(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
             .unwrap();
     }
@@ -88,21 +92,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_block_crud() {
-        let block_id = 0;
         let first_record = b"Hello, World";
         let second_record = b"Hello, Pavel";
 
         let block_storage = BlockStorage::new(40000).await;
-        block_storage.create_block(block_id, first_record).await;
+        let uuid = block_storage.create_block(first_record).await;
         assert_eq!(
             first_record.as_slice(),
-            block_storage.read_block(block_id).await.as_slice()
+            block_storage.read_block(uuid).await.as_slice()
         );
-        block_storage.update_block(block_id, second_record).await;
+        block_storage.update_block(uuid, second_record).await;
         assert_eq!(
             second_record.as_slice(),
-            block_storage.read_block(block_id).await.as_slice()
+            block_storage.read_block(uuid).await.as_slice()
         );
-        block_storage.delete_block(block_id);
+        block_storage.delete_block(uuid).await;
     }
 }

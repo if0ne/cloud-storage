@@ -1,12 +1,8 @@
-mod block_storage;
-mod block_storage_service;
-
 use clap::Parser;
 use std::net::SocketAddr;
 use tonic::transport::Server;
 
-use crate::block_storage::BlockStorage;
-use crate::block_storage_service::BlockStorageServiceImpl;
+use data_node::block_storage_service::BlockStorageServiceImpl;
 
 #[derive(Parser, Debug)]
 struct Config {
