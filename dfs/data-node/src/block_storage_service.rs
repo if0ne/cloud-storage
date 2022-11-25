@@ -1,13 +1,13 @@
 use crate::block_storage::BlockStorage;
 use crate::block_storage::StorageTag;
 
+use crate::block_storage_decorator::BlockStorageDecorator;
 use proto::{
     block_storage_service_server::{BlockStorageService, BlockStorageServiceServer},
     CreateBlockRequest, CreateBlockResponse, DeleteBlockRequest, DeleteBlockResponse,
     ReadBlockRequest, ReadBlockResponse, UpdateBlockRequest, UpdateBlockResponse,
 };
 use tonic::{Request, Response, Status};
-use crate::block_storage_decorator::BlockStorageDecorator;
 
 pub mod proto {
     tonic::include_proto!("data_node");
@@ -32,7 +32,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         request: Request<CreateBlockRequest>,
     ) -> Result<Response<CreateBlockResponse>, Status> {
         let inner = request.into_inner();
-        let uuid = self.block_storage.create_block(&inner.data).await;
+        let uuid = self.block_storage.create_block(&inner.data).await?;
         Ok(Response::new(CreateBlockResponse {
             block_id: uuid.as_bytes().to_vec(),
         }))
@@ -43,10 +43,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         request: Request<ReadBlockRequest>,
     ) -> Result<Response<ReadBlockResponse>, Status> {
         let inner = request.into_inner();
-        let read = self
-            .block_storage
-            .read_block(&inner.block_id)
-            .await;
+        let read = self.block_storage.read_block(&inner.block_id).await?;
         Ok(Response::new(ReadBlockResponse { data: read }))
     }
 
@@ -57,7 +54,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         let inner = request.into_inner();
         self.block_storage
             .update_block(&inner.block_id, &inner.data)
-            .await;
+            .await.into();
         Ok(Response::new(UpdateBlockResponse {}))
     }
 
@@ -66,9 +63,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         request: Request<DeleteBlockRequest>,
     ) -> Result<Response<DeleteBlockResponse>, Status> {
         let inner = request.into_inner();
-        self.block_storage
-            .delete_block(&inner.block_id)
-            .await;
+        self.block_storage.delete_block(&inner.block_id).await.into();
         Ok(Response::new(DeleteBlockResponse {}))
     }
 }

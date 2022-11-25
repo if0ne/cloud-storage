@@ -1,6 +1,7 @@
 use std::io::SeekFrom;
 use std::path::Path;
 
+use cloud_api::error::BlockStorageError;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufReader, BufWriter};
 use uuid::Uuid;
@@ -23,7 +24,7 @@ impl BlockStorage {
         Ok(Self { tag })
     }
 
-    pub async fn create_block(&self, data: &[u8]) -> Uuid {
+    pub async fn create_block(&self, data: &[u8]) -> Result<Uuid, BlockStorageError> {
         let uuid = Uuid::new_v4();
         let file = OpenOptions::new()
             .write(true)
@@ -31,50 +32,68 @@ impl BlockStorage {
             .create(true)
             .open(format!("{}/{}", self.tag, uuid.as_u128()))
             .await
-            .unwrap();
-        self.write_block(file, data).await;
+            .map_err(|err| BlockStorageError::CreateBlockError(err.to_string()))?;
+        self.write_block(file, data).await?;
 
-        uuid
+        Ok(uuid)
     }
 
-    pub async fn read_block(&self, block_id: Uuid) -> Vec<u8> {
+    pub async fn read_block(&self, block_id: Uuid) -> Result<Vec<u8>, BlockStorageError> {
         let file = OpenOptions::new()
             .write(false)
             .read(true)
             .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .unwrap();
-        let buffer_len = file.metadata().await.unwrap().len() as usize;
+            .map_err(|err| BlockStorageError::BlockNotFound(err.to_string()))?;
+        let buffer_len = file
+            .metadata()
+            .await
+            .map_err(|err| BlockStorageError::ReadBlockError(err.to_string()))?
+            .len() as usize;
         let mut reader = BufReader::new(file);
         let mut buffer = vec![0; buffer_len];
-        reader.read_exact(&mut buffer).await.unwrap();
+        reader
+            .read_exact(&mut buffer)
+            .await
+            .map_err(|err| BlockStorageError::ReadBlockError(err.to_string()))?;
 
-        buffer
+        Ok(buffer)
     }
 
-    pub async fn update_block(&self, block_id: Uuid, data: &[u8]) {
+    pub async fn update_block(&self, block_id: Uuid, data: &[u8]) -> Result<(), BlockStorageError> {
         let file = OpenOptions::new()
             .write(true)
             .read(false)
             .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .unwrap();
-        self.write_block(file, data).await;
+            .map_err(|err| BlockStorageError::DeleteBlockError(err.to_string()))?;
+        self.write_block(file, data).await
     }
 
-    pub async fn delete_block(&self, block_id: Uuid) {
+    pub async fn delete_block(&self, block_id: Uuid) -> Result<(), BlockStorageError> {
         tokio::fs::remove_file(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .unwrap();
+            .map_err(|err| BlockStorageError::DeleteBlockError(err.to_string()))
     }
 
     #[inline]
-    async fn write_block(&self, file: File, data: &[u8]) {
+    async fn write_block(&self, file: File, data: &[u8]) -> Result<(), BlockStorageError> {
         let mut writer = BufWriter::new(file);
 
-        writer.seek(SeekFrom::Start(0)).await.unwrap();
-        writer.write_all(data).await.unwrap();
-        writer.flush().await.unwrap();
+        writer
+            .seek(SeekFrom::Start(0))
+            .await
+            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+        writer
+            .write_all(data)
+            .await
+            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+        writer
+            .flush()
+            .await
+            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+
+        Ok(())
     }
 }
 
