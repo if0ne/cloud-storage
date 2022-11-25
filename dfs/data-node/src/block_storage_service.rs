@@ -29,10 +29,9 @@ impl BlockStorageServiceImpl {
 impl BlockStorageService for BlockStorageServiceImpl {
     async fn create_block(
         &self,
-        request: Request<CreateBlockRequest>,
+        _: Request<CreateBlockRequest>,
     ) -> Result<Response<CreateBlockResponse>, Status> {
-        let inner = request.into_inner();
-        let uuid = self.block_storage.create_block(&inner.data).await?;
+        let uuid = self.block_storage.create_block().await?;
         Ok(Response::new(CreateBlockResponse {
             block_id: uuid.as_bytes().to_vec(),
         }))
@@ -54,7 +53,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         let inner = request.into_inner();
         self.block_storage
             .update_block(&inner.block_id, &inner.data)
-            .await.into();
+            .await?;
         Ok(Response::new(UpdateBlockResponse {}))
     }
 
@@ -63,7 +62,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         request: Request<DeleteBlockRequest>,
     ) -> Result<Response<DeleteBlockResponse>, Status> {
         let inner = request.into_inner();
-        self.block_storage.delete_block(&inner.block_id).await.into();
+        self.block_storage.delete_block(&inner.block_id).await?;
         Ok(Response::new(DeleteBlockResponse {}))
     }
 }

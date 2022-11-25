@@ -1,19 +1,43 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tonic_error::TonicError;
+use std::fmt::Formatter;
 
-#[derive(Debug, Error, TonicError, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum BlockStorageError {
-    #[error("fail to create block {0}")]
     CreateBlockError(String),
-    #[error("block {0} was not found")]
     BlockNotFound(String),
-    #[error("got wrong uuid format {0}")]
     WrongUuid(String),
-    #[error("fail to read block {0}")]
     ReadBlockError(String),
-    #[error("fail to update block {0}")]
     UpdateBlockError(String),
-    #[error("fail to delete block {0}")]
     DeleteBlockError(String),
+}
+
+impl std::fmt::Display for BlockStorageError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BlockStorageError::CreateBlockError(str) => {
+                write!(f, "fail to create block {0}", str)
+            }
+            BlockStorageError::BlockNotFound(str) => {
+                write!(f, "block {0} was not found", str)
+            }
+            BlockStorageError::WrongUuid(str) => {
+                write!(f, "got wrong uuid format {0}", str)
+            }
+            BlockStorageError::ReadBlockError(str) => {
+                write!(f, "fail to read block {0}", str)
+            }
+            BlockStorageError::UpdateBlockError(str) => {
+                write!(f, "fail to update block {0}", str)
+            }
+            BlockStorageError::DeleteBlockError(str) => {
+                write!(f, "fail to delete block {0}", str)
+            }
+        }
+    }
+}
+
+impl From<BlockStorageError> for tonic::Status {
+    fn from(error: BlockStorageError) -> Self {
+        tonic::Status::internal(error.to_string())
+    }
 }

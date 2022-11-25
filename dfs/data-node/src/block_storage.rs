@@ -24,16 +24,15 @@ impl BlockStorage {
         Ok(Self { tag })
     }
 
-    pub async fn create_block(&self, data: &[u8]) -> Result<Uuid, BlockStorageError> {
+    pub async fn create_block(&self) -> Result<Uuid, BlockStorageError> {
         let uuid = Uuid::new_v4();
-        let file = OpenOptions::new()
+        let _ = OpenOptions::new()
             .write(true)
             .read(false)
             .create(true)
             .open(format!("{}/{}", self.tag, uuid.as_u128()))
             .await
             .map_err(|err| BlockStorageError::CreateBlockError(err.to_string()))?;
-        self.write_block(file, data).await?;
 
         Ok(uuid)
     }
@@ -44,7 +43,7 @@ impl BlockStorage {
             .read(true)
             .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .map_err(|err| BlockStorageError::BlockNotFound(err.to_string()))?;
+            .map_err(|_| BlockStorageError::BlockNotFound(block_id.to_string()))?;
         let buffer_len = file
             .metadata()
             .await
@@ -66,14 +65,14 @@ impl BlockStorage {
             .read(false)
             .open(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .map_err(|err| BlockStorageError::DeleteBlockError(err.to_string()))?;
+            .map_err(|_| BlockStorageError::UpdateBlockError(block_id.to_string()))?;
         self.write_block(file, data).await
     }
 
     pub async fn delete_block(&self, block_id: Uuid) -> Result<(), BlockStorageError> {
         tokio::fs::remove_file(format!("{}/{}", self.tag, block_id.as_u128()))
             .await
-            .map_err(|err| BlockStorageError::DeleteBlockError(err.to_string()))
+            .map_err(|_| BlockStorageError::DeleteBlockError(block_id.to_string()))
     }
 
     #[inline]
