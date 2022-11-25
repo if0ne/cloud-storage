@@ -9,6 +9,7 @@ members = [
 ]
 
 [workspace.dependencies]
+async-trait = { version = "0.1.58" }
 clap = { version = "4.0.18", features = ["derive"] }
 dotenv = { version = "0.15.0" }
 futures = { version = "0.3.25" }
