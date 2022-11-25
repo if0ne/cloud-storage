@@ -7,20 +7,20 @@ use proto::{
     ReadBlockRequest, ReadBlockResponse, UpdateBlockRequest, UpdateBlockResponse,
 };
 use tonic::{Request, Response, Status};
-use uuid::Uuid;
+use crate::block_storage_decorator::BlockStorageDecorator;
 
 pub mod proto {
     tonic::include_proto!("data_node");
 }
 
 pub struct BlockStorageServiceImpl {
-    block_storage: BlockStorage,
+    block_storage: BlockStorageDecorator,
 }
 
 impl BlockStorageServiceImpl {
     pub async fn get_service(tag: StorageTag) -> BlockStorageServiceServer<Self> {
         BlockStorageServiceServer::new(BlockStorageServiceImpl {
-            block_storage: BlockStorage::new(tag).await,
+            block_storage: BlockStorageDecorator::new(BlockStorage::new(tag).await.unwrap()),
         })
     }
 }
@@ -45,7 +45,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
         let inner = request.into_inner();
         let read = self
             .block_storage
-            .read_block(Uuid::from_slice(&inner.block_id).unwrap())
+            .read_block(&inner.block_id)
             .await;
         Ok(Response::new(ReadBlockResponse { data: read }))
     }
@@ -56,7 +56,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
     ) -> Result<Response<UpdateBlockResponse>, Status> {
         let inner = request.into_inner();
         self.block_storage
-            .update_block(Uuid::from_slice(&inner.block_id).unwrap(), &inner.data)
+            .update_block(&inner.block_id, &inner.data)
             .await;
         Ok(Response::new(UpdateBlockResponse {}))
     }
@@ -67,7 +67,7 @@ impl BlockStorageService for BlockStorageServiceImpl {
     ) -> Result<Response<DeleteBlockResponse>, Status> {
         let inner = request.into_inner();
         self.block_storage
-            .delete_block(Uuid::from_slice(&inner.block_id).unwrap())
+            .delete_block(&inner.block_id)
             .await;
         Ok(Response::new(DeleteBlockResponse {}))
     }

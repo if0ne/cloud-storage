@@ -10,7 +10,7 @@ fn block_storage_benchmark(c: &mut Criterion) {
         move |b| {
             b.to_async(tokio::runtime::Runtime::new().unwrap())
                 .iter(|| async {
-                    let block_storage = BlockStorage::new(40000).await;
+                    let block_storage = BlockStorage::new(40000).await.unwrap();
                     let jobs =
                         (0..=black_box(100)).map(|_| block_storage.create_block(black_box(data)));
                     let results = futures::future::join_all(jobs).await;

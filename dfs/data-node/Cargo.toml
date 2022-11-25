@@ -7,10 +7,12 @@ edition = "2021"
 
 [dependencies]
 clap= { workspace = true, features = ["derive"] }
+cloud-api = { path = "../cloud-api" }
 futures.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "signal"] }
 tower.workspace = true
 tonic.workspace = true
+tonic-error.workspace = true
 tonic-web.workspace = true
 prost.workspace = true
 prost-types.workspace = true

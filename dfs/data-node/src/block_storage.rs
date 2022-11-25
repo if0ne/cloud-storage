@@ -12,16 +12,15 @@ pub struct BlockStorage {
 }
 
 impl BlockStorage {
-    //TODO: Error handling
-    pub async fn new(tag: StorageTag) -> Self {
+    pub async fn new(tag: StorageTag) -> std::io::Result<Self> {
         let inner_path = format!("{}", tag);
         let path = Path::new(&inner_path);
 
         if !path.exists() {
-            tokio::fs::create_dir(inner_path).await.unwrap();
+            tokio::fs::create_dir(inner_path).await?;
         }
 
-        Self { tag }
+        Ok(Self { tag })
     }
 
     pub async fn create_block(&self, data: &[u8]) -> Uuid {
@@ -79,7 +78,7 @@ impl BlockStorage {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, bench))]
 impl Drop for BlockStorage {
     fn drop(&mut self) {
         std::fs::remove_dir_all(format!("{}", self.tag)).unwrap();
@@ -95,7 +94,7 @@ mod tests {
         let first_record = b"Hello, World";
         let second_record = b"Hello, Pavel";
 
-        let block_storage = BlockStorage::new(40000).await;
+        let block_storage = BlockStorage::new(40000).await.unwrap();
         let uuid = block_storage.create_block(first_record).await;
         assert_eq!(
             first_record.as_slice(),

@@ -16,8 +16,10 @@ futures = { version = "0.3.25" }
 hyper = { version = "0.14", features = ["full"] }
 prost = { version = "0.11.0" }
 prost-types = { version = "0.11.2" }
+thiserror = { version = "1.0.37" }
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tonic = { version = "0.8.2" }
+tonic-error = { version = "0.3.0" }
 tonic-web = { version = "0.4.0" }
 tower = { version = "0.4.13", features = ["full"] }
 tracing = { version = "0.1.37" }
