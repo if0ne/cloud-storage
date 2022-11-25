@@ -2,6 +2,7 @@
 members = [
     "dfs/data-node",
     "dfs/main-server",
+    "dfs/cloud-api",
 
     "session-server",
     "enterprise"
