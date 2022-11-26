@@ -1,12 +1,13 @@
+mod data_node_client;
+mod namespace;
+mod namespace_controller;
+mod namespace_service;
+
 use std::net::SocketAddr;
 use tonic::transport::Server;
 
 use crate::namespace::Namespace;
 use crate::namespace_controller::NamespaceController;
-
-mod namespace;
-mod namespace_service;
-mod namespace_controller;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

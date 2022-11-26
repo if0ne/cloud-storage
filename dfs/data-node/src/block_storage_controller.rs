@@ -1,17 +1,16 @@
-use crate::block_storage::BlockStorage;
-use crate::block_storage::StorageTag;
+pub mod proto_data_node {
+    tonic::include_proto!("data_node");
+}
 
-use crate::block_storage_service::BlockStorageServiceImpl;
+use super::block_storage::{BlockStorage, StorageTag};
+use super::block_storage_service::BlockStorageServiceImpl;
+
 use proto_data_node::{
     block_storage_service_server::{BlockStorageService, BlockStorageServiceServer},
     CreateBlockRequest, CreateBlockResponse, DeleteBlockRequest, DeleteBlockResponse,
     ReadBlockRequest, ReadBlockResponse, UpdateBlockRequest, UpdateBlockResponse,
 };
 use tonic::{Request, Response, Status};
-
-pub mod proto_data_node {
-    tonic::include_proto!("data_node");
-}
 
 pub struct BlockStorageController {
     block_storage: BlockStorageServiceImpl,

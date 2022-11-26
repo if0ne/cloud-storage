@@ -1,23 +1,19 @@
-use proto_main_server::{
-    namespace_service_server::{NamespaceService, NamespaceServiceServer},
-    MakeDirRequest, MakeDirResponse, CreateFileRequest, CreateSmallFileResponse,
-    NewBlockRequest, NewBlockResponse
-};
-use tonic::{Request, Response, Status};
-
 pub mod proto_main_server {
     tonic::include_proto!("main_server");
 }
 
-pub struct NamespaceController {
+use proto_main_server::{
+    namespace_service_server::{NamespaceService, NamespaceServiceServer},
+    CreateFileRequest, CreateSmallFileResponse, MakeDirRequest, MakeDirResponse, NewBlockRequest,
+    NewBlockResponse,
+};
+use tonic::{Request, Response, Status};
 
-}
+pub struct NamespaceController {}
 
 impl NamespaceController {
     pub async fn get_service() -> NamespaceServiceServer<Self> {
-        NamespaceServiceServer::new(Self {
-
-        })
+        NamespaceServiceServer::new(Self {})
     }
 }
 
@@ -42,7 +38,7 @@ impl NamespaceService for NamespaceController {
         request: Request<NewBlockRequest>,
     ) -> Result<Response<NewBlockResponse>, Status> {
         Ok(Response::new(NewBlockResponse {
-            block_id: vec![0, 0, 0, 0]
+            block_id: vec![0, 0, 0, 0],
         }))
     }
 }
