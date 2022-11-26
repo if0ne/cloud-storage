@@ -1,3 +1,3 @@
-pub mod block_storage;
-pub mod block_storage_decorator;
-pub mod block_storage_service;
+mod block_storage;
+mod block_storage_service;
+pub mod block_storage_controller;

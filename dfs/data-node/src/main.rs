@@ -2,7 +2,7 @@ use clap::Parser;
 use std::net::SocketAddr;
 use tonic::transport::Server;
 
-use data_node::block_storage_service::BlockStorageServiceImpl;
+use data_node::block_storage_controller::BlockStorageController;
 
 #[derive(Parser, Debug)]
 struct Config {
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .accept_http1(true)
-        .add_service(BlockStorageServiceImpl::get_service(config.port).await)
+        .add_service(BlockStorageController::get_service(config.port).await)
         .serve(addr)
         .await?;
 

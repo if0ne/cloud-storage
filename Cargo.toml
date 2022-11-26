@@ -11,6 +11,7 @@ members = [
 [workspace.dependencies]
 async-trait = { version = "0.1.58" }
 clap = { version = "4.0.18", features = ["derive"] }
+criterion = { version = "0.4.0", features = ["async_tokio"] }
 dotenv = { version = "0.15.0" }
 futures = { version = "0.3.25" }
 hyper = { version = "0.14", features = ["full"] }
@@ -18,7 +19,9 @@ prost = { version = "0.11.0" }
 prost-types = { version = "0.11.2" }
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tonic = { version = "0.8.2" }
+tonic-build = { version = "0.8.2", features = ["prost"] }
 tonic-web = { version = "0.4.0" }
 tower = { version = "0.4.13", features = ["full"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+uuid = { version = "1.2.2", features = ["fast-rng", "serde", "v4", "zerocopy"] }

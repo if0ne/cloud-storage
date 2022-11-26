@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package main_server;
+
+service NamespaceService {
+  rpc make_dir(MakeDirRequest) returns (MakeDirResponse) {}
+  rpc create_small_file(CreateFileRequest) returns (CreateSmallFileResponse) {}
+  //rpc create_large_file(CreateFileRequest) returns (CreateLargeFileResponse) {}
+  rpc new_small_block(NewBlockRequest) returns (NewBlockResponse) {}
+  //rpc new_large_block(NewBlockRequest) returns (NewBlockResponse) {}
+}
+
+message MakeDirRequest {
+  string path = 1;
+}
+
+message MakeDirResponse {
+
+}
+
+message CreateFileRequest {
+  string path = 1;
+}
+
+message CreateSmallFileResponse {
+
+}
+
+message NewBlockRequest {
+
+}
+
+message NewBlockResponse {
+  bytes block_id = 1;
+}
