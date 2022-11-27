@@ -106,7 +106,7 @@ impl InodeIndex {
 
 #[derive(Debug)]
 pub struct Namespace {
-    root: Inode,
+    pub root: Inode,
 }
 
 impl Namespace {
