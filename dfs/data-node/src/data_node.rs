@@ -1,10 +1,11 @@
-use std::io::SeekFrom;
-
-use crate::data_node_info::DataNodeInfo;
 use cloud_api::error::DataNodeError;
+use futures::TryFutureExt;
+use std::io::SeekFrom;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufReader, BufWriter};
 use uuid::Uuid;
+
+use super::data_node_info::DataNodeInfo;
 
 pub struct DataNode {
     data_node_info: DataNodeInfo,
@@ -59,7 +60,15 @@ impl DataNode {
         let mut reader = BufReader::new(file);
         let mut buffer = vec![0; buffer_len];
         reader
+            .seek(SeekFrom::Start(0))
+            .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))
+            .await?;
+        reader
             .read_exact(&mut buffer)
+            .await
+            .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))?;
+        reader
+            .flush()
             .await
             .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))?;
 
@@ -121,7 +130,7 @@ impl DataNode {
 #[cfg(any(test, bench))]
 impl Drop for DataNode {
     fn drop(&mut self) {
-        for disk in self.data_node_info.disks {
+        for disk in &self.data_node_info.disks {
             let _ =
                 std::fs::remove_dir_all(disk.mount.join(&self.data_node_info.working_directory));
         }
@@ -135,8 +144,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_block_crud() {
-        let first_record = b"Hello, World";
-        let second_record = b"Hello, Pavel";
+        let message = b"Hello, Pavel";
 
         let data_node_info = DataNodeInfo::new(Config {
             main_server_address: "[::1]:8000".to_string(),
@@ -149,14 +157,11 @@ mod tests {
 
         let data_node = DataNode::new(data_node_info).await.unwrap();
         let uuid = data_node.create_block().await.unwrap();
+
+        data_node.update_block(uuid, message).await.unwrap();
         assert_eq!(
-            first_record.as_slice(),
-            data_node.read_block(uuid).await.as_slice()
-        );
-        data_node.update_block(uuid, second_record).await.unwrap();
-        assert_eq!(
-            second_record.as_slice(),
-            data_node.read_block(uuid).await.as_slice()
+            message.as_slice(),
+            data_node.read_block(uuid).await.unwrap().as_slice()
         );
         data_node.delete_block(uuid).await.unwrap();
     }

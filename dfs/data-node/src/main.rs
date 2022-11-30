@@ -8,6 +8,9 @@ use data_node::data_node_info::DataNodeInfo;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sysinfo::set_open_files_limit(0);
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     let config = Config::try_from_file("DataNodeTest.toml").await;
     let data_node_info = DataNodeInfo::new(config).await;
@@ -16,6 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, health_service) = tonic_health::server::health_reporter();
     let block_storage_service = BlockStorageController::get_service(data_node_info).await;
 
+    tracing::info!("Starting server on {} port", addr.port());
     Server::builder()
         .accept_http1(true)
         .add_service(health_service)

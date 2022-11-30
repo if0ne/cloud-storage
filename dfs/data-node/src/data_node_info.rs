@@ -6,10 +6,9 @@ use std::path::{Path, PathBuf};
 use sysinfo::{DiskExt, SystemExt};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
-use crate::config::Config;
-use crate::disk_stats::DiskStats;
+use super::config::Config;
+use super::disk_stats::DiskStats;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct DataNodeInfo {
     pub port: u16,
@@ -27,25 +26,45 @@ impl DataNodeInfo {
         let total_space = disks
             .iter()
             .fold(0, |space, disk| space + disk.available_space);
-
-        //TODO: Rewrite smth
-        let used_space = {
-            let mut used_space = 0;
-            for disk in &disks {
-                used_space += *disk.used_space.read().await
-            }
-
-            used_space
-        };
+        let used_space = Self::get_used_space(&disks).await;
 
         let status = Self::check_config(&config, &path).await;
         if let Ok(status) = status {
             if !status && used_space != 0 {
-                panic!("Wrong block size")
+                panic!("Wrong block size. Please recover old block size or clean up all working directories.");
             }
+        } else if used_space != 0 {
+            panic!("Block size was missed and file system isn't empty. Please recover old block size or clean up all working directories.");
         }
 
-        Self::save_state(&config, &path).await.unwrap();
+        if Self::save_state(&config, &path).await.is_err() {
+            tracing::warn!("Can't save the state. It can lead to memory inconsistency.");
+        }
+
+        tracing::debug!(
+            "Working directory: {} ",
+            working_directory.to_string_lossy()
+        );
+        tracing::debug!(
+            "Total space: {} bytes | {} Kb | {} Mb | {} Gb",
+            total_space,
+            total_space / 1024,
+            total_space / 1024 / 1024,
+            total_space / 1024 / 1024 / 1024
+        );
+        tracing::debug!(
+            "Used space: {} bytes | {} Kb | {} Mb | {} Gb",
+            used_space,
+            used_space / 1024,
+            used_space / 1024 / 1024,
+            used_space / 1024 / 1024 / 1024
+        );
+        tracing::debug!(
+            "Block size: {} bytes | {} Kb | {} Mb",
+            config.block_size,
+            config.block_size / 1024,
+            config.block_size / 1024 / 1024
+        );
 
         Self {
             port: config.port,
@@ -101,10 +120,7 @@ impl DataNodeInfo {
         Ok(())
     }
 
-    async fn check_config(
-        config: &Config,
-        suffix: &str,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
+    async fn check_config(config: &Config, suffix: &str) -> std::io::Result<bool> {
         let mut hasher = DefaultHasher::new();
         ((config.block_size as u64 * 2) >> 6).hash(&mut hasher);
 
@@ -114,6 +130,15 @@ impl DataNodeInfo {
         let read = file.read_u64().await?;
 
         Ok(hash == read)
+    }
+
+    async fn get_used_space(disks: &[DiskStats]) -> u64 {
+        let mut used_space = 0;
+        for disk in disks {
+            used_space += *disk.used_space.read().await
+        }
+
+        used_space
     }
 
     fn get_disks(block_size: usize, working_directory: impl AsRef<Path>) -> Vec<DiskStats> {

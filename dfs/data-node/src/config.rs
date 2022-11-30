@@ -1,5 +1,6 @@
 use clap::Parser;
 use serde::Deserialize;
+use std::path::Path;
 use tokio::io::AsyncReadExt;
 
 #[derive(Deserialize, Parser)]
@@ -21,13 +22,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub async fn try_from_file(path: impl AsRef<std::path::Path>) -> Self {
+    pub async fn try_from_file(path: impl AsRef<Path>) -> Self {
         Self::from_file(path)
             .await
             .unwrap_or_else(|_| Self::parse())
     }
 
-    pub async fn from_file(path: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+    pub async fn from_file(path: impl AsRef<Path>) -> std::io::Result<Self> {
         let mut config_file = tokio::fs::OpenOptions::new()
             .read(true)
             .write(false)
