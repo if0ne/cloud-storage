@@ -18,6 +18,7 @@ hyper = { version = "0.14", features = ["full"] }
 prost = { version = "0.11.0" }
 prost-types = { version = "0.11.2" }
 serde = { version = "1.0.147", features = ["derive"] }
+sysinfo = { version = "0.26.8" }
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 toml = { version = "0.5.9" }
 tonic = { version = "0.8.2" }

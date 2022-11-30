@@ -2,4 +2,4 @@
 /target
 /Cargo.lock
 *.test_txt
-40000
+.data_node_info_*

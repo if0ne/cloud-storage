@@ -6,21 +6,25 @@ use tokio::io::AsyncReadExt;
 pub struct Config {
     // Address of main server
     #[arg(short, long)]
-    main_server_address: String,
+    pub(crate) main_server_address: String,
     /// Port
     #[arg(short, long, default_value_t = 40000)]
-    port: u16,
+    pub(crate) port: u16,
     /// Block size
     #[arg(short, long)]
-    block_size: u32,
+    pub(crate) block_size: u32,
     /// Volume of disk space to use in KB. If not set service will use all disk space
     #[arg(short, long)]
-    disk_usage: Option<u128>,
+    pub(crate) disk_space: Option<u64>,
+    #[arg(short, long)]
+    pub(crate) working_directory: String,
 }
 
 impl Config {
     pub async fn try_from_file(path: impl AsRef<std::path::Path>) -> Self {
-        Self::from_file(path).await.unwrap_or(Self::parse())
+        Self::from_file(path)
+            .await
+            .unwrap_or_else(|_| Self::parse())
     }
 
     pub async fn from_file(path: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
@@ -35,24 +39,5 @@ impl Config {
         let config: Config = toml::from_str(&buffer)?;
 
         Ok(config)
-    }
-}
-
-//Fields
-impl Config {
-    pub fn main_server_addr(&self) -> &str {
-        &self.main_server_address
-    }
-
-    pub fn port(&self) -> u16 {
-        self.port
-    }
-
-    pub fn block_size(&self) -> u32 {
-        self.block_size
-    }
-
-    pub fn disk_usage(&self) -> Option<u128> {
-        self.disk_usage
     }
 }

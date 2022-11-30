@@ -1,14 +1,14 @@
-use crate::block_storage::BlockStorage;
+use crate::data_node::DataNode;
 
 use cloud_api::error::BlockStorageError;
 use uuid::Uuid;
 
 pub struct BlockStorageServiceImpl {
-    inner: BlockStorage,
+    inner: DataNode,
 }
 
 impl BlockStorageServiceImpl {
-    pub fn new(block_storage: BlockStorage) -> Self {
+    pub fn new(block_storage: DataNode) -> Self {
         Self {
             inner: block_storage,
         }

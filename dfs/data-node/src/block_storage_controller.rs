@@ -2,9 +2,10 @@ pub mod proto_data_node {
     tonic::include_proto!("data_node");
 }
 
-use super::block_storage::{BlockStorage, StorageTag};
 use super::block_storage_service::BlockStorageServiceImpl;
+use super::data_node::DataNode;
 
+use crate::data_node_info::DataNodeInfo;
 use proto_data_node::{
     block_storage_service_server::{BlockStorageService, BlockStorageServiceServer},
     CreateBlockRequest, CreateBlockResponse, DeleteBlockRequest, DeleteBlockResponse,
@@ -17,9 +18,11 @@ pub struct BlockStorageController {
 }
 
 impl BlockStorageController {
-    pub async fn get_service(tag: StorageTag) -> BlockStorageServiceServer<Self> {
+    pub async fn get_service(data_node_info: DataNodeInfo) -> BlockStorageServiceServer<Self> {
         BlockStorageServiceServer::new(Self {
-            block_storage: BlockStorageServiceImpl::new(BlockStorage::new(tag).await.unwrap()),
+            block_storage: BlockStorageServiceImpl::new(
+                DataNode::new(data_node_info).await.unwrap(),
+            ),
         })
     }
 }
