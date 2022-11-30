@@ -1,12 +1,9 @@
-#![feature(async_closure)]
-
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::SeekFrom;
 use std::path::Path;
 use sysinfo::{DiskExt, SystemExt};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
-use tokio::sync::RwLock;
 
 use crate::config::Config;
 use crate::disk_stats::DiskStats;
@@ -26,7 +23,9 @@ impl DataNodeInfo {
         let path = format!("{}_{}", config.working_directory, config.block_size);
         let working_directory = Box::from(Path::new(&path));
         let disks = Self::get_disks(config.block_size, &working_directory);
-        let total_space = disks.iter().fold(0, |space, disk| space + disk.available_space);
+        let total_space = disks
+            .iter()
+            .fold(0, |space, disk| space + disk.available_space);
 
         //TODO: Rewrite smth
         let used_space = {
@@ -99,42 +98,20 @@ impl DataNodeInfo {
     fn get_disks(block_size: u32, working_directory: impl AsRef<Path>) -> Vec<DiskStats> {
         let mut system = sysinfo::System::new_all();
         system.refresh_all();
-        system.sort_disks_by(|l_disk, r_disk| {
-            r_disk.available_space().cmp(&l_disk.total_space())
-        });
+        system.sort_disks_by(|l_disk, r_disk| r_disk.available_space().cmp(&l_disk.total_space()));
 
-        system.disks().iter().map(|disk| {
-            DiskStats::new(disk.total_space(), disk.available_space(), block_size, disk.mount_point(), &working_directory)
-        }).collect()
-    }
-
-    fn get_total_space(disk_space: Option<u64>) -> u64 {
-        let disk = {
-            let mut system = sysinfo::System::new_all();
-            system.refresh_all();
-            system.sort_disks_by(|l_disk, r_disk| {
-                r_disk.available_space().cmp(&l_disk.total_space())
-            });
-            let biggest_disk = system.disks().first();
-            if let Some(biggest_disk) = biggest_disk {
-                biggest_disk.available_space()
-            } else {
-                0
-            }
-        };
-
-        if let Some(memory) = disk_space {
-            memory.min(disk)
-        } else {
-            disk
-        }
-    }
-
-    async fn get_used_space(working_directory: impl AsRef<Path>, block_size: u32) -> u64 {
-        if let Ok(dir) = std::fs::read_dir(working_directory) {
-            (dir.into_iter().count() as u64) * (block_size as u64)
-        } else {
-            0
-        }
+        system
+            .disks()
+            .iter()
+            .filter_map(|disk| {
+                DiskStats::new(
+                    disk.total_space(),
+                    disk.available_space(),
+                    block_size,
+                    disk.mount_point(),
+                    &working_directory,
+                )
+            })
+            .collect()
     }
 }
