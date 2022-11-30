@@ -67,6 +67,13 @@ impl DataNode {
     }
 
     pub async fn update_block(&self, block_id: Uuid, data: &[u8]) -> Result<(), DataNodeError> {
+        if data.len() > self.data_node_info.block_size {
+            return Err(DataNodeError::BlockOverflow(
+                self.data_node_info.block_size,
+                data.len(),
+            ));
+        }
+
         let path = self
             .data_node_info
             .found_block(block_id.as_u128().to_string())

@@ -12,7 +12,7 @@ pub struct Config {
     pub(crate) port: u16,
     /// Block size
     #[arg(short, long)]
-    pub(crate) block_size: u32,
+    pub(crate) block_size: usize,
     /// Volume of disk space to use in KB. If not set service will use all disk space
     #[arg(short, long)]
     pub(crate) disk_space: Option<u64>,

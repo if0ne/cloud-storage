@@ -13,7 +13,7 @@ impl DiskStats {
     pub(crate) fn new(
         total_space: u64,
         available_space: u64,
-        block_size: u32,
+        block_size: usize,
         mount: impl AsRef<Path>,
         working_directory: impl AsRef<Path>,
     ) -> Option<Self> {

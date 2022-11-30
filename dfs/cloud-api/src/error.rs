@@ -10,6 +10,7 @@ pub enum DataNodeError {
     UpdateBlockError(String),
     DeleteBlockError(String),
     NoSpace,
+    BlockOverflow(usize, usize),
 }
 
 impl std::fmt::Display for DataNodeError {
@@ -35,6 +36,13 @@ impl std::fmt::Display for DataNodeError {
             }
             DataNodeError::NoSpace => {
                 write!(f, "No space")
+            }
+            DataNodeError::BlockOverflow(block_size, buffer_size) => {
+                write!(
+                    f,
+                    "Trying to write {} bytes in block of {} bytes size",
+                    buffer_size, block_size
+                )
             }
         }
     }

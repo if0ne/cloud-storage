@@ -14,7 +14,7 @@ use crate::disk_stats::DiskStats;
 pub struct DataNodeInfo {
     pub port: u16,
     pub(crate) working_directory: Box<Path>,
-    pub(crate) block_size: u32,
+    pub(crate) block_size: usize,
     pub(crate) total_space: u64,
     pub(crate) disks: Vec<DiskStats>,
 }
@@ -116,7 +116,7 @@ impl DataNodeInfo {
         Ok(hash == read)
     }
 
-    fn get_disks(block_size: u32, working_directory: impl AsRef<Path>) -> Vec<DiskStats> {
+    fn get_disks(block_size: usize, working_directory: impl AsRef<Path>) -> Vec<DiskStats> {
         let mut system = sysinfo::System::new_all();
         system.refresh_all();
         system.sort_disks_by(|l_disk, r_disk| r_disk.available_space().cmp(&l_disk.total_space()));
