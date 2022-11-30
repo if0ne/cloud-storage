@@ -2,22 +2,24 @@ pub mod proto_main_server {
     tonic::include_proto!("main_server");
 }
 
-use std::path::Path;
+use crate::namespace_service::NamespaceServiceImpl;
 use proto_main_server::{
     namespace_service_server::{NamespaceService, NamespaceServiceServer},
     CreateFileRequest, CreateSmallFileResponse, MakeDirRequest, MakeDirResponse, NewBlockRequest,
     NewBlockResponse,
 };
+use std::path::Path;
 use tonic::{Request, Response, Status};
-use crate::namespace_service::NamespaceServiceImpl;
 
 pub struct NamespaceController {
-    namespace_service: NamespaceServiceImpl
+    namespace_service: NamespaceServiceImpl,
 }
 
 impl NamespaceController {
     pub async fn get_service() -> NamespaceServiceServer<Self> {
-        NamespaceServiceServer::new(Self { namespace_service: NamespaceServiceImpl::new() })
+        NamespaceServiceServer::new(Self {
+            namespace_service: NamespaceServiceImpl::new(),
+        })
     }
 }
 
