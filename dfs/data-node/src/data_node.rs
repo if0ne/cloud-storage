@@ -1,7 +1,7 @@
 use std::io::SeekFrom;
 
 use crate::data_node_info::DataNodeInfo;
-use cloud_api::error::BlockStorageError;
+use cloud_api::error::DataNodeError;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufReader, BufWriter};
 use uuid::Uuid;
@@ -12,96 +12,100 @@ pub struct DataNode {
 
 impl DataNode {
     pub async fn new(data_node_info: DataNodeInfo) -> std::io::Result<Self> {
-        if !data_node_info.working_directory.exists() {
-            tokio::fs::create_dir(&data_node_info.working_directory).await?;
+        for disk in &data_node_info.disks {
+            let path = disk.mount.join(&data_node_info.working_directory);
+            if !path.exists() {
+                tokio::fs::create_dir(path).await?;
+            }
         }
 
         Ok(Self { data_node_info })
     }
 
-    pub async fn create_block(&self) -> Result<Uuid, BlockStorageError> {
+    pub async fn create_block(&self) -> Result<Uuid, DataNodeError> {
         let uuid = Uuid::new_v4();
+        let disk = self.data_node_info.get_disk_for_new_block().await?;
         let _ = OpenOptions::new()
             .write(true)
             .read(false)
             .create(true)
             .open(
-                self.data_node_info
-                    .working_directory
+                disk.mount
+                    .join(&self.data_node_info.working_directory)
                     .join(uuid.as_u128().to_string()),
             )
             .await
-            .map_err(|err| BlockStorageError::CreateBlockError(err.to_string()))?;
+            .map_err(|err| DataNodeError::CreateBlockError(err.to_string()))?;
 
         Ok(uuid)
     }
 
-    pub async fn read_block(&self, block_id: Uuid) -> Result<Vec<u8>, BlockStorageError> {
+    pub async fn read_block(&self, block_id: Uuid) -> Result<Vec<u8>, DataNodeError> {
+        let path = self
+            .data_node_info
+            .found_block(block_id.as_u128().to_string())
+            .await?;
         let file = OpenOptions::new()
             .write(false)
             .read(true)
-            .open(
-                self.data_node_info
-                    .working_directory
-                    .join(block_id.as_u128().to_string()),
-            )
+            .open(path)
             .await
-            .map_err(|_| BlockStorageError::BlockNotFound(block_id.to_string()))?;
+            .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))?;
         let buffer_len = file
             .metadata()
             .await
-            .map_err(|err| BlockStorageError::ReadBlockError(err.to_string()))?
+            .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))?
             .len() as usize;
         let mut reader = BufReader::new(file);
         let mut buffer = vec![0; buffer_len];
         reader
             .read_exact(&mut buffer)
             .await
-            .map_err(|err| BlockStorageError::ReadBlockError(err.to_string()))?;
+            .map_err(|err| DataNodeError::ReadBlockError(err.to_string()))?;
 
         Ok(buffer)
     }
 
-    pub async fn update_block(&self, block_id: Uuid, data: &[u8]) -> Result<(), BlockStorageError> {
+    pub async fn update_block(&self, block_id: Uuid, data: &[u8]) -> Result<(), DataNodeError> {
+        let path = self
+            .data_node_info
+            .found_block(block_id.as_u128().to_string())
+            .await?;
         let file = OpenOptions::new()
             .write(true)
             .read(false)
-            .open(
-                self.data_node_info
-                    .working_directory
-                    .join(block_id.as_u128().to_string()),
-            )
+            .open(path)
             .await
-            .map_err(|_| BlockStorageError::UpdateBlockError(block_id.to_string()))?;
+            .map_err(|_| DataNodeError::UpdateBlockError(block_id.to_string()))?;
         self.write_block(file, data).await
     }
 
-    pub async fn delete_block(&self, block_id: Uuid) -> Result<(), BlockStorageError> {
-        tokio::fs::remove_file(
-            self.data_node_info
-                .working_directory
-                .join(block_id.as_u128().to_string()),
-        )
-        .await
-        .map_err(|_| BlockStorageError::DeleteBlockError(block_id.to_string()))
+    pub async fn delete_block(&self, block_id: Uuid) -> Result<(), DataNodeError> {
+        let path = self
+            .data_node_info
+            .found_block(block_id.as_u128().to_string())
+            .await?;
+        tokio::fs::remove_file(path)
+            .await
+            .map_err(|_| DataNodeError::DeleteBlockError(block_id.to_string()))
     }
 
     #[inline]
-    async fn write_block(&self, file: File, data: &[u8]) -> Result<(), BlockStorageError> {
+    async fn write_block(&self, file: File, data: &[u8]) -> Result<(), DataNodeError> {
         let mut writer = BufWriter::new(file);
 
         writer
             .seek(SeekFrom::Start(0))
             .await
-            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+            .map_err(|err| DataNodeError::UpdateBlockError(err.to_string()))?;
         writer
             .write_all(data)
             .await
-            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+            .map_err(|err| DataNodeError::UpdateBlockError(err.to_string()))?;
         writer
             .flush()
             .await
-            .map_err(|err| BlockStorageError::UpdateBlockError(err.to_string()))?;
+            .map_err(|err| DataNodeError::UpdateBlockError(err.to_string()))?;
 
         Ok(())
     }
@@ -110,7 +114,10 @@ impl DataNode {
 #[cfg(any(test, bench))]
 impl Drop for DataNode {
     fn drop(&mut self) {
-        std::fs::remove_dir_all(&self.data_node_info.working_directory).unwrap();
+        for disk in self.data_node_info.disks {
+            let _ =
+                std::fs::remove_dir_all(disk.mount.join(&self.data_node_info.working_directory));
+        }
     }
 }
 

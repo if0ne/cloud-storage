@@ -1,7 +1,8 @@
+use cloud_api::error::DataNodeError;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::SeekFrom;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use sysinfo::{DiskExt, SystemExt};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
@@ -55,6 +56,34 @@ impl DataNodeInfo {
         }
     }
 
+    pub(crate) async fn get_disk_for_new_block(&self) -> Result<&DiskStats, DataNodeError> {
+        for disk in &self.disks {
+            let mut writer = disk.used_space.write().await;
+            if *writer + (self.block_size as u64) <= self.total_space {
+                *writer += self.block_size as u64;
+                return Ok(disk);
+            }
+        }
+
+        Err(DataNodeError::NoSpace)
+    }
+
+    pub(crate) async fn found_block(
+        &self,
+        uuid: impl AsRef<Path>,
+    ) -> Result<PathBuf, DataNodeError> {
+        for disk in &self.disks {
+            let path = disk.mount.join(&self.working_directory).join(&uuid);
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+
+        Err(DataNodeError::BlockNotFound(
+            uuid.as_ref().to_string_lossy().to_string(),
+        ))
+    }
+
     async fn save_state(config: &Config, suffix: &str) -> std::io::Result<()> {
         let mut hasher = DefaultHasher::new();
         ((config.block_size as u64 * 2) >> 6).hash(&mut hasher);
@@ -62,10 +91,8 @@ impl DataNodeInfo {
         let hash = hasher.finish();
         let path = format!(".data_node_info_{}", suffix);
         let mut file = tokio::fs::OpenOptions::new()
-            .read(true)
             .write(true)
             .create(true)
-            .append(false)
             .open(&path)
             .await?;
         file.seek(SeekFrom::Start(0)).await?;
@@ -83,13 +110,7 @@ impl DataNodeInfo {
 
         let hash = hasher.finish();
         let path = format!(".data_node_info_{}", suffix);
-        let mut file = tokio::fs::OpenOptions::new()
-            .read(true)
-            .write(false)
-            .create(false)
-            .append(true)
-            .open(&path)
-            .await?;
+        let mut file = tokio::fs::OpenOptions::new().read(true).open(&path).await?;
         let read = file.read_u64().await?;
 
         Ok(hash == read)
