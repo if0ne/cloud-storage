@@ -11,7 +11,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::try_from_file("DataNodeTest.toml").await;
     let data_node_info = DataNodeInfo::new(config).await;
-
     let addr = SocketAddr::from(([0, 0, 0, 0], data_node_info.port));
 
     let (_, health_service) = tonic_health::server::health_reporter();

@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::SeekFrom;
@@ -7,6 +9,7 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::RwLock;
 
 use crate::config::Config;
+use crate::disk_stats::DiskStats;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -15,15 +18,25 @@ pub struct DataNodeInfo {
     pub(crate) working_directory: Box<Path>,
     pub(crate) block_size: u32,
     pub(crate) total_space: u64,
-    pub(crate) used_space: RwLock<u64>,
+    pub(crate) disks: Vec<DiskStats>,
 }
 
 impl DataNodeInfo {
     pub async fn new(config: Config) -> Self {
         let path = format!("{}_{}", config.working_directory, config.block_size);
         let working_directory = Box::from(Path::new(&path));
-        let total_space = Self::get_total_space(config.disk_space);
-        let used_space = Self::get_used_space(&working_directory, config.block_size).await;
+        let disks = Self::get_disks(config.block_size, &working_directory);
+        let total_space = disks.iter().fold(0, |space, disk| space + disk.available_space);
+
+        //TODO: Rewrite smth
+        let used_space = {
+            let mut used_space = 0;
+            for disk in &disks {
+                used_space += *disk.used_space.read().await
+            }
+
+            used_space
+        };
 
         let status = Self::check_config(&config, &path).await;
         if let Ok(status) = status {
@@ -39,7 +52,7 @@ impl DataNodeInfo {
             working_directory,
             block_size: config.block_size,
             total_space,
-            used_space: RwLock::new(used_space),
+            disks,
         }
     }
 
@@ -81,6 +94,18 @@ impl DataNodeInfo {
         let read = file.read_u64().await?;
 
         Ok(hash == read)
+    }
+
+    fn get_disks(block_size: u32, working_directory: impl AsRef<Path>) -> Vec<DiskStats> {
+        let mut system = sysinfo::System::new_all();
+        system.refresh_all();
+        system.sort_disks_by(|l_disk, r_disk| {
+            r_disk.available_space().cmp(&l_disk.total_space())
+        });
+
+        system.disks().iter().map(|disk| {
+            DiskStats::new(disk.total_space(), disk.available_space(), block_size, disk.mount_point(), &working_directory)
+        }).collect()
     }
 
     fn get_total_space(disk_space: Option<u64>) -> u64 {
