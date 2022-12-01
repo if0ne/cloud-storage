@@ -167,23 +167,40 @@ mod tests {
             block_size: 32,
             disk_space: None,
             working_directory: "test_dir".to_string(),
+            read_buffer: 8,
         })
         .await;
+        let buffer_size = data_node_info.read_buffer;
 
         let data_node = DataNode::new(data_node_info).await.unwrap();
         let uuid = data_node.create_block().await.unwrap();
 
         data_node.update_block(uuid, message).await.unwrap();
-        assert_eq!(
-            message.as_slice(),
-            data_node.read_block(uuid).await.unwrap().as_slice()
-        );
+        let (path, len) = data_node.get_block_info(uuid).await.unwrap();
+        let chunk_count = len / buffer_size;
+        let last_chunk = len - chunk_count * buffer_size;
+
+        let mut read_message = vec![];
+        for i in 0..(chunk_count + 1) {
+            let bytes = if i == chunk_count {
+                if last_chunk == 0 {
+                    break;
+                }
+                (i * buffer_size)..(i * buffer_size + last_chunk)
+            } else {
+                (i * buffer_size)..((i + 1) * buffer_size)
+            };
+            let read = data_node.read_block(&path, bytes).await.unwrap();
+            read_message = [read_message, read].concat();
+        }
+
+        assert_eq!(message.as_slice(), read_message.as_slice());
         data_node.delete_block(uuid).await.unwrap();
     }
 
     #[tokio::test]
     async fn test_multi_read_access() {
-        let message = std::iter::repeat(b"Hello, Pavel ".clone())
+        let message = std::iter::repeat(*b"Hello, Pavel ")
             .take(4096)
             .flatten()
             .collect::<Vec<_>>();
@@ -196,20 +213,40 @@ mod tests {
             block_size: 65536,
             disk_space: None,
             working_directory: "test_dir".to_string(),
+            read_buffer: 1000,
         })
         .await;
+        let buffer_size = data_node_info.read_buffer;
 
         let data_node = DataNode::new(data_node_info).await.unwrap();
         let uuid = data_node.create_block().await.unwrap();
 
         data_node.update_block(uuid, &message).await.unwrap();
-        let mut futures = (0..100)
-            .into_iter()
-            .map(|_| data_node.read_block(uuid))
-            .collect::<Vec<_>>();
+        let (path, len) = data_node.get_block_info(uuid).await.unwrap();
+        let chunk_count = len / buffer_size;
+        let last_chunk = len - chunk_count * buffer_size;
+        let mut futures = vec![];
+        for _ in 0..100 {
+            futures.push(async {
+                let mut read_message = vec![];
+                for i in 0..(chunk_count + 1) {
+                    let bytes = if i == chunk_count {
+                        if last_chunk == 0 {
+                            break;
+                        }
+                        (i * buffer_size)..(i * buffer_size + last_chunk)
+                    } else {
+                        (i * buffer_size)..((i + 1) * buffer_size)
+                    };
+                    let read = data_node.read_block(&path, bytes).await.unwrap();
+                    read_message = [read_message, read].concat();
+                }
+                read_message
+            })
+        }
         let results = futures::future::join_all(futures).await;
         for i in results {
-            assert_eq!(message.as_slice(), i.unwrap().as_slice());
+            assert_eq!(message.as_slice(), i.as_slice());
         }
 
         data_node.delete_block(uuid).await.unwrap();
