@@ -15,6 +15,7 @@ pub struct DataNodeInfo {
     pub self_address: String,
     pub(crate) working_directory: Box<Path>,
     pub(crate) block_size: usize,
+    pub(crate) read_buffer: usize,
     pub(crate) total_space: u64,
     pub(crate) disks: Vec<DiskStats>,
 }
@@ -70,6 +71,7 @@ impl DataNodeInfo {
         Self {
             port: config.port,
             self_address: config.self_address,
+            read_buffer: config.read_buffer,
             working_directory,
             block_size: config.block_size,
             total_space,

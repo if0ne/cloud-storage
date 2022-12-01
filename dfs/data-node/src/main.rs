@@ -16,17 +16,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::try_from_file("DataNodeTest.toml").await;
     let registry_client = RegistryClient::new(config.get_main_server_addr()).await;
-    let mut registry_client = match registry_client {
-        Ok(client) => client,
+    match registry_client {
+        Ok(mut client) => {
+            let response = client.send_registry(&config).await;
+            if let Err(response) = response {
+                tracing::error!("{}", response.to_string());
+            }
+        }
         Err(err) => {
-            panic!("{}", err.to_string())
+            tracing::error!(
+                "{}. Please start up the main server and restart data node.",
+                err.to_string()
+            )
         }
     };
-
-    let response = registry_client.send_registry(&config).await;
-    if let Err(response) = response {
-        panic!("{}", response.to_string());
-    }
 
     let data_node_info = DataNodeInfo::new(config).await;
     let addr = format!("{}:{}", data_node_info.self_address, data_node_info.port)

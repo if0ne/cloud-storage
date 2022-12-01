@@ -20,8 +20,12 @@ pub struct Config {
     /// Volume of disk space to use in KB. If not set service will use all disk space
     #[arg(short, long)]
     pub(crate) disk_space: Option<u64>,
+    /// Name of directory where will placed blocks
     #[arg(short, long)]
     pub(crate) working_directory: String,
+    /// Buffer size for stream reading
+    #[arg(short, long)]
+    pub(crate) read_buffer: usize,
 }
 
 impl Config {

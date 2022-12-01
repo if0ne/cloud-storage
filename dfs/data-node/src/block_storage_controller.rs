@@ -1,12 +1,15 @@
-mod proto_data_node {
+pub mod proto_data_node {
     tonic::include_proto!("data_node");
 }
 
+use futures::StreamExt;
 use proto_data_node::{
     block_storage_service_server::{BlockStorageService, BlockStorageServiceServer},
     CreateBlockRequest, CreateBlockResponse, DeleteBlockRequest, DeleteBlockResponse,
     ReadBlockRequest, ReadBlockResponse, UpdateBlockRequest, UpdateBlockResponse,
 };
+use std::sync::Arc;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
 use super::block_storage_service::BlockStorageServiceImpl;
@@ -14,15 +17,15 @@ use super::data_node::DataNode;
 use super::data_node_info::DataNodeInfo;
 
 pub struct BlockStorageController {
-    block_storage: BlockStorageServiceImpl,
+    block_storage: Arc<BlockStorageServiceImpl>,
 }
 
 impl BlockStorageController {
     pub async fn get_service(data_node_info: DataNodeInfo) -> BlockStorageServiceServer<Self> {
         BlockStorageServiceServer::new(Self {
-            block_storage: BlockStorageServiceImpl::new(
+            block_storage: Arc::new(BlockStorageServiceImpl::new(
                 DataNode::new(data_node_info).await.unwrap(),
-            ),
+            )),
         })
     }
 }
@@ -39,13 +42,36 @@ impl BlockStorageService for BlockStorageController {
         }))
     }
 
+    type ReadBlockStream = ReceiverStream<Result<ReadBlockResponse, Status>>;
+
     async fn read_block(
         &self,
         request: Request<ReadBlockRequest>,
-    ) -> Result<Response<ReadBlockResponse>, Status> {
+    ) -> Result<Response<Self::ReadBlockStream>, Status> {
         let inner = request.into_inner();
-        let read = self.block_storage.read_block(&inner.block_id).await?;
-        Ok(Response::new(ReadBlockResponse { data: read }))
+
+        let (controller_tx, controller_rx) = tokio::sync::mpsc::channel(128);
+        let (service_tx, service_rx) = tokio::sync::mpsc::channel(128);
+        let block_storage = self.block_storage.clone();
+
+        tokio::spawn(async move {
+            let response = block_storage.read_block(&inner.block_id, service_tx).await;
+            if let Err(err) = response {
+                let _ = controller_tx.send(Err(err.into())).await;
+            }
+            let mut stream = ReceiverStream::new(service_rx);
+            while let Some(response) = stream.next().await {
+                let _ = controller_tx
+                    .send(
+                        response
+                            .map(|buffer| ReadBlockResponse { data: buffer })
+                            .map_err(|err| err.into()),
+                    )
+                    .await;
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(controller_rx)))
     }
 
     async fn update_block(
