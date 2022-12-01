@@ -147,7 +147,8 @@ mod tests {
         let message = b"Hello, Pavel";
 
         let data_node_info = DataNodeInfo::new(Config {
-            main_server_address: "[::1]:8000".to_string(),
+            main_server_address: "http://[::1]:8000".to_string(),
+            self_address: "http://[::1]".to_string(),
             port: 40000,
             block_size: 32,
             disk_space: None,

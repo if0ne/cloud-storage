@@ -8,6 +8,9 @@ pub struct Config {
     // Address of main server
     #[arg(short, long)]
     pub(crate) main_server_address: String,
+    // Address of this instance
+    #[arg(short, long)]
+    pub(crate) self_address: String,
     /// Port
     #[arg(short, long, default_value_t = 40000)]
     pub(crate) port: u16,
@@ -40,5 +43,9 @@ impl Config {
         let config: Config = toml::from_str(&buffer)?;
 
         Ok(config)
+    }
+
+    pub fn get_main_server_addr(&self) -> String {
+        self.main_server_address.clone()
     }
 }

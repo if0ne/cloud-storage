@@ -12,6 +12,7 @@ use super::disk_stats::DiskStats;
 #[derive(Debug)]
 pub struct DataNodeInfo {
     pub port: u16,
+    pub self_address: String,
     pub(crate) working_directory: Box<Path>,
     pub(crate) block_size: usize,
     pub(crate) total_space: u64,
@@ -68,6 +69,7 @@ impl DataNodeInfo {
 
         Self {
             port: config.port,
+            self_address: config.self_address,
             working_directory,
             block_size: config.block_size,
             total_space,

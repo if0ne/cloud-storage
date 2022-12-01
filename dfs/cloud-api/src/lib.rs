@@ -11,10 +11,8 @@ pub mod proto_main_server {
 
 use async_trait::async_trait;
 use proto_main_server::namespace_service_client::NamespaceServiceClient;
-use proto_main_server::{CreateFileRequest, NewBlockRequest};
-use std::ops::Range;
+use proto_main_server::CreateFileRequest;
 use std::path::Path;
-use tokio::io::{AsyncReadExt, AsyncWrite};
 use tonic::transport::Endpoint;
 
 use crate::client::CloudClient;

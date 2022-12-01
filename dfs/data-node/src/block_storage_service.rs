@@ -1,7 +1,7 @@
-use crate::data_node::DataNode;
-
 use cloud_api::error::DataNodeError;
 use uuid::Uuid;
+
+use super::data_node::DataNode;
 
 pub struct BlockStorageServiceImpl {
     inner: DataNode,
