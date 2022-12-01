@@ -11,7 +11,6 @@ pub(crate) struct DiskStats {
 
 impl DiskStats {
     pub(crate) fn new(
-        total_space: u64,
         available_space: u64,
         block_size: usize,
         mount: impl AsRef<Path>,
@@ -32,7 +31,7 @@ impl DiskStats {
             0
         };
         let disk_stats = Self {
-            available_space: total_space - available_space + used_space,
+            available_space: available_space + used_space,
             used_space: RwLock::new(used_space),
             mount: Box::from(mount.as_ref()),
         };

@@ -155,7 +155,6 @@ impl DataNodeInfo {
             .iter()
             .filter_map(|disk| {
                 DiskStats::new(
-                    disk.total_space(),
                     disk.available_space(),
                     block_size,
                     disk.mount_point(),
