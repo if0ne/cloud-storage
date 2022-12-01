@@ -49,7 +49,7 @@ impl BlockStorageServiceImpl {
                     tracing::debug!("Sent chunk number {} of {}", i, uuid);
                 }
                 Err(_) => {
-                    tracing::error!("Stream for {} was dropped", uuid);
+                    tracing::error!("Read stream for {} was dropped", uuid);
                     break;
                 }
             }

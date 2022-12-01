@@ -11,6 +11,7 @@ use proto_data_node::{
 use std::sync::Arc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
+use uuid::Uuid;
 
 use super::block_storage_service::BlockStorageServiceImpl;
 use super::data_node::DataNode;
@@ -57,17 +58,37 @@ impl BlockStorageService for BlockStorageController {
         tokio::spawn(async move {
             let response = block_storage.read_block(&inner.block_id, service_tx).await;
             if let Err(err) = response {
-                let _ = controller_tx.send(Err(err.into())).await;
+                let response = controller_tx.send(Err(err.into())).await;
+                if let Err(err) = response {
+                    tracing::debug!("Send error while reading: {}", err);
+                    return;
+                }
             }
             let mut stream = ReceiverStream::new(service_rx);
             while let Some(response) = stream.next().await {
-                let _ = controller_tx
+                let response = controller_tx
                     .send(
                         response
                             .map(|buffer| ReadBlockResponse { data: buffer })
                             .map_err(|err| err.into()),
                     )
                     .await;
+
+                match response {
+                    Ok(_) => {
+                        tracing::debug!(
+                            "Sent data chunk for {}",
+                            Uuid::from_slice(&inner.block_id).unwrap()
+                        );
+                    }
+                    Err(_) => {
+                        tracing::error!(
+                            "Stream for {} was dropped",
+                            Uuid::from_slice(&inner.block_id).unwrap()
+                        );
+                        break;
+                    }
+                }
             }
         });
 
